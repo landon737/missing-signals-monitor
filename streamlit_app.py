@@ -146,6 +146,37 @@ def get_live_usdc_peg_coingecko() -> float | None:
         return None
 
 # -------------------------
+# Crypto Liquidity Proxy (CoinGecko Global)
+# -------------------------
+
+def get_crypto_liquidity_proxy() -> dict | None:
+    """
+    Fetch basic global crypto market data from CoinGecko:
+    - Total market cap (USD)
+    - 24h volume (USD)
+    - BTC dominance (%)
+    """
+    try:
+        url = "https://api.coingecko.com/api/v3/global"
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        data = r.json()["data"]
+
+        total_mcap = float(data["total_market_cap"]["usd"])
+        total_volume = float(data["total_volume"]["usd"])
+        btc_dominance = float(data["market_cap_percentage"]["btc"])
+
+        return {
+            "total_mcap": total_mcap,
+            "total_volume": total_volume,
+            "btc_dominance": btc_dominance,
+        }
+    except Exception as e:
+        st.warning(f"Crypto liquidity proxy fetch failed: {e}")
+        return None
+
+
+# -------------------------
 # Risk interpretation
 # -------------------------
 
@@ -274,13 +305,14 @@ left_col, right_col = st.columns([2, 2])
 
 # LEFT COLUMN – Liquidity + Peg
 with left_col:
-    st.markdown("#### Global Liquidity & Stablecoin Peg (v1.2)")
+    st.markdown("#### Global Liquidity & Stablecoin Peg (v1.3)")
 
     sub1, sub2 = st.columns(2)
 
     # Liquidity subpanel
     with sub1:
-        st.caption("Liquidity Index (0–100)")
+        st.caption("Liquidity Index & Crypto Market")
+
         fig_liq = px.line(df, x="time", y="liquidity_index", template="plotly_dark")
         fig_liq.add_vline(x=event_time, line_dash="dash", line_color="orange")
         fig_liq.update_layout(
@@ -292,10 +324,24 @@ with left_col:
         st.plotly_chart(fig_liq, use_container_width=True)
 
         liq_trend = "tightening" if latest["liquidity_index"] < df["liquidity_index"].iloc[0] else "easing or stable"
-        st.markdown(
-            f"- **Current:** {latest['liquidity_index']:.1f}  \n"
-            f"- **Trend:** {liq_trend.capitalize()}"
-        )
+
+        lines = [
+            f"- **Simulated Liquidity Index:** {latest['liquidity_index']:.1f}",
+            f"- **Trend:** {liq_trend.capitalize()}",
+        ]
+
+        proxy = get_crypto_liquidity_proxy()
+        if proxy is not None:
+            total_mcap_trillions = proxy["total_mcap"] / 1e12
+            total_vol_billions = proxy["total_volume"] / 1e9
+            lines.append(f"- **Total crypto mkt cap:** ${total_mcap_trillions:.2f}T")
+            lines.append(f"- **24h volume:** ${total_vol_billions:.1f}B")
+            lines.append(f"- **BTC dominance:** {proxy['btc_dominance']:.1f}%")
+        else:
+            lines.append("- **Crypto market data:** unavailable (using index only)")
+
+        st.markdown("  \n".join(lines))
+
 
     # USDC peg subpanel
     with sub2:
