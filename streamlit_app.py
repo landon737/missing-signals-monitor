@@ -140,8 +140,7 @@ def get_live_usdc_peg_coingecko() -> float | None:
         data = r.json()
         usdc_usd = float(data["usd-coin"]["usd"])
         usdt_usd = float(data["tether"]["usd"])
-        if usdt_usd == 0:
-            raise ValueError("USDT/USD is zero")
+        if usdt_usd == 0:            raise ValueError("USDT/USD is zero")
         return usdc_usd / usdt_usd
     except Exception as e:
         st.warning(f"Live USDC peg fetch (CoinGecko) failed: {e}")
@@ -213,6 +212,65 @@ def check_exchange_health(name: str, url: str, timeout: float = 3.0) -> dict:
             "error": type(e).__name__,
         }
 
+# -------------------------
+# Narrative pulse (NewsAPI)
+# -------------------------
+
+def get_narrative_pulse() -> dict | None:
+    """
+    Use NewsAPI to get a simple 'narrative pulse' for crypto:
+    - total articles (last 24h)
+    - counts for key themes: ETF, hack, regulation, SEC, macro (CPI/Fed)
+    """
+    api_key = st.secrets.get("newsapi_key")
+    if not api_key:
+        st.info("No NewsAPI key configured; skipping narrative pulse.")
+        return None
+
+    try:
+        url = "https://newsapi.org/v2/everything"
+        from_date = (dt.datetime.utcnow() - dt.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        params = {
+            "q": "crypto OR bitcoin OR ethereum",
+            "language": "en",
+            "sortBy": "publishedAt",
+            "from": from_date,
+            "pageSize": 50,
+            "apiKey": api_key,
+        }
+        r = requests.get(url, params=params, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+
+        articles = data.get("articles", [])
+        total = len(articles)
+
+        themes = {
+            "ETF": 0,
+            "hack": 0,
+            "regulation": 0,
+            "SEC": 0,
+            "CPI/Fed": 0,
+        }
+
+        for a in articles:
+            text = ((a.get("title") or "") + " " + (a.get("description") or "")).lower()
+            if "etf" in text:
+                themes["ETF"] += 1
+            if "hack" in text or "exploit" in text:
+                themes["hack"] += 1
+            if "regulat" in text or "ban" in text:
+                themes["regulation"] += 1
+            if "sec" in text:
+                themes["SEC"] += 1
+            if "cpi" in text or "fed " in text or "fomc" in text:
+                themes["CPI/Fed"] += 1
+
+        return {"total": total, "themes": themes}
+
+    except Exception as e:
+        st.warning(f"Narrative pulse fetch failed: {e}")
+        return None
 
 # -------------------------
 # Risk interpretation
