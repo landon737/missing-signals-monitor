@@ -119,6 +119,23 @@ def get_live_btc_price_usd() -> float | None:
         return None
 
 # -------------------------
+# Live USDC/USDT peg (Binance)
+# -------------------------
+
+def get_live_usdc_usdt_binance() -> float | None:
+    """Fetch live USDC/USDT price from Binance."""
+    try:
+        url = "https://api.binance.com/api/v3/ticker/price"
+        params = {"symbol": "USDCUSDT"}
+        r = requests.get(url, params=params, timeout=5)
+        r.raise_for_status()
+        data = r.json()
+        return float(data["price"])
+    except Exception as e:
+        st.warning(f"Live USDC peg fetch failed: {e}")
+        return None
+
+# -------------------------
 # Risk interpretation
 # -------------------------
 
@@ -270,6 +287,8 @@ with left_col:
 
     with sub2:
         st.caption("USDC Peg vs 1.0000")
+
+        # Plot the simulated peg history for visual context
         fig_peg = px.line(df, x="time", y="peg", template="plotly_dark")
         fig_peg.add_hline(y=1.0, line_dash="dash", line_color="gray")
         fig_peg.add_vline(x=event_time, line_dash="dash", line_color="orange")
@@ -280,12 +299,24 @@ with left_col:
             margin=dict(l=30, r=10, t=30, b=30),
         )
         st.plotly_chart(fig_peg, use_container_width=True)
-        peg_dev = abs(latest["peg"] - 1.0)
+
+        # Live peg from Binance (with fallback to simulated)
+        live_peg = get_live_usdc_usdt_binance()
+        if live_peg is not None:
+            peg_value = live_peg
+            source_label = "Binance USDC/USDT"
+        else:
+            peg_value = float(latest["peg"])
+            source_label = "Simulated peg (fallback)"
+
+        peg_dev = abs(peg_value - 1.0)
         peg_status = "Normal" if peg_dev <= 0.002 else "Under Pressure"
+
         st.markdown(
-            f"- **Last price:** {latest['peg']:.4f}\n"
-            f"- **Deviation:** {peg_dev:.4f}\n"
-            f"- **Peg status:** **{peg_status}**"
+            f"- **Last price:** {peg_value:.4f}  \n"
+            f"- **Deviation:** {peg_dev:.4f}  \n"
+            f"- **Peg status:** **{peg_status}**  \n"
+            f"- **Source:** {source_label}"
         )
 
 
