@@ -25,6 +25,7 @@ import streamlit as st
 import plotly.express as px
 import requests
 import time
+from requests.exceptions import HTTPError
 
 # -------------------------
 # Config & page layout
@@ -188,13 +189,21 @@ def check_exchange_health(name: str, url: str, timeout: float = 3.0) -> dict:
     start = time.monotonic()
     try:
         r = requests.get(url, timeout=timeout)
-        r.raise_for_status()
         latency_ms = (time.monotonic() - start) * 1000
+        r.raise_for_status()
         return {
             "name": name,
             "latency_ms": latency_ms,
             "ok": True,
             "error": None,
+        }
+    except HTTPError as e:
+        status = e.response.status_code if e.response is not None else None
+        return {
+            "name": name,
+            "latency_ms": None,
+            "ok": False,
+            "error": f"HTTP {status}" if status is not None else "HTTPError",
         }
     except Exception as e:
         return {
@@ -203,6 +212,7 @@ def check_exchange_health(name: str, url: str, timeout: float = 3.0) -> dict:
             "ok": False,
             "error": type(e).__name__,
         }
+
 
 # -------------------------
 # Risk interpretation
@@ -480,7 +490,12 @@ with right_col:
         if h["ok"] and h["latency_ms"] is not None:
             lines.append(f"- {h['name']}: **{h['latency_ms']:.0f} ms** (OK)")
         else:
-            lines.append(f"- {h['name']}: **unreachable** ({h['error']})")
+            err = h["error"] or "unknown error"
+            if isinstance(err, str) and err.startswith("HTTP 451"):
+                lines.append(f"- {h['name']}: **blocked from this region (HTTP 451)**")
+            else:
+                lines.append(f"- {h['name']}: **unreachable** ({err})")
+
 
     st.markdown("  \n".join(lines))
 
