@@ -1,3 +1,4 @@
+
 """
 Missing Signals Monitor – Live Dashboard Prototype (Streamlit)
 
@@ -273,6 +274,78 @@ def get_narrative_pulse() -> dict | None:
         return None
 
 # -------------------------
+# Risk interpretation & composite score
+# -------------------------
+
+def interpret_risk(score):
+    """Map a 0–100 score to a label + description."""
+    if score >= 70:
+        return (
+            "HIGH RISK – ±8% MOVE LIKELY",
+            "Multiple stress signals active (price, liquidity, peg or exchanges). Volatility risk is elevated.",
+        )
+    elif score >= 40:
+        return (
+            "MODERATE RISK – VOLATILITY ELEVATED",
+            "Some warning signals present. Watch conditions carefully and be selective with entries.",
+        )
+    else:
+        return (
+            "LOW RISK – NORMAL CONDITIONS",
+            "Signals are mostly calm. No major systemic stress showing up yet.",
+        )
+
+
+def compute_composite_risk(intraday_ret_pct, liq_index, liq_trend, peg_dev, health_results):
+    """
+    Very simple first-pass composite risk score.
+    Returns (score_0_100, details_dict).
+    """
+    score = 0.0
+
+    # 1) Price move in window: big moves → higher risk
+    score += min(abs(intraday_ret_pct) * 2.0, 35.0)
+
+    # 2) Liquidity index level & trend
+    if liq_index < 50:
+        score += 15.0
+    elif liq_index < 55:
+        score += 8.0
+
+    if liq_trend == "tightening":
+        score += 7.0
+
+    # 3) Stablecoin peg deviation
+    if peg_dev > 0.010:      # > 1%
+        score += 30.0
+    elif peg_dev > 0.005:    # 0.5–1%
+        score += 15.0
+    elif peg_dev > 0.002:    # 0.2–0.5%
+        score += 5.0
+
+    # 4) Exchange health
+    bad_exchanges = [h for h in health_results if not h.get("ok")]
+    high_latency = [
+        h for h in health_results
+        if h.get("ok") and h.get("latency_ms") is not None and h["latency_ms"] > 800
+    ]
+
+    if bad_exchanges:
+        score += 10.0
+    if high_latency:
+        score += 5.0
+
+    score = max(0.0, min(100.0, score))
+
+    details = {
+        "price_comment": f"Intraday move: {intraday_ret_pct:+.2f}%",
+        "liq_comment": f"Liquidity index: {liq_index:.1f} ({liq_trend})",
+        "peg_comment": f"Peg deviation: {peg_dev:.4f}",
+        "exch_comment": f"Unhealthy exchanges: {len(bad_exchanges)}, high-latency: {len(high_latency)}",
+    }
+    return score, details
+
+# -------------------------
 # Risk interpretation
 # -------------------------
 
@@ -481,18 +554,26 @@ with left_col:
 with right_col:
     st.markdown("#### Composite Risk, Alerts & Exchange Health (v1.0 composite)")
 
+    # Thresholds for coloring
+    high_thr = 70
+    med_thr = 40
+
     # --- Compute components for composite risk score ---
+
+    # Price: intraday move in this window
     intraday_ret = (latest["btc"] - df["btc"].iloc[0]) / df["btc"].iloc[0] * 100
+
+    # Liquidity index & trend
     liq_index = float(latest["liquidity_index"])
     liq_trend = "tightening" if liq_index < df["liquidity_index"].iloc[0] else "easing or stable"
 
-    # Live peg (or fallback)
+    # Stablecoin peg (live or fallback)
     live_peg = get_live_usdc_peg_coingecko()
     if live_peg is None:
         live_peg = float(latest["peg"])
     peg_dev = abs(live_peg - 1.0)
 
-    # Exchange health (we'll reuse this later in the health panel)
+    # Exchange health (we'll reuse this for the panel below)
     exchanges_to_check = [
         ("Binance", "https://api.binance.com/api/v3/time"),
         ("Coinbase", "https://api.coinbase.com/v2/time"),
@@ -510,10 +591,13 @@ with right_col:
     )
 
     risk_label, risk_desc = interpret_risk(composite_score)
+
+    # Choose color
     if composite_score >= high_thr:
         risk_color = "#e74c3c"  # red
     elif composite_score >= med_thr:
         risk_color = "#f1c40f"  # yellow
+        # leave risk_color as yellow
     else:
         risk_color = "#2ecc71"  # green
 
@@ -530,29 +614,7 @@ with right_col:
         unsafe_allow_html=True,
     )
 
-
-    if latest["risk_score"] >= high_thr:
-        risk_color = "#e74c3c"  # red
-    elif latest["risk_score"] >= med_thr:
-        risk_color = "#f1c40f"  # yellow
-    else:
-        risk_color = "#2ecc71"  # green
-
-
-
-    # Risk history chart
-    fig_risk = px.line(df, x="time", y="risk_score", template="plotly_dark")
-    fig_risk.add_vline(x=event_time, line_dash="dash", line_color="orange")
-    fig_risk.update_layout(
-        xaxis_title="Time",
-        yaxis_title="Risk Score (0–100)",
-        height=260,
-        margin=dict(l=30, r=10, t=30, b=30),
-        yaxis=dict(range=[0, 100]),
-    )
-    st.plotly_chart(fig_risk, use_container_width=True)
-
-    # Breakdown bullets
+    # Signals feeding into the score
     st.markdown("**Signals feeding into this risk score:**")
     st.markdown(
         f"""
@@ -563,8 +625,11 @@ with right_col:
         """
     )
 
-
-
+    st.caption(
+        "This is a first-pass composite score combining price move, liquidity, stablecoin peg, "
+        "and exchange health. In a more advanced model, we would also plug in on-chain flows, "
+        "macro surprise indices, and narrative velocity."
+    )
 
     # Exchange health section
     st.markdown("---")
@@ -581,13 +646,13 @@ with right_col:
             else:
                 lines.append(f"- {h['name']}: **unreachable** ({err})")
 
-
     st.markdown("  \n".join(lines))
 
     st.caption(
         "If one or more major exchanges become slow or unreachable, this can be an early sign of "
         "stress, outages, or unusual load before price fully reflects it."
     )
+
 
 st.markdown("---")
 st.markdown("#### Narrative Pulse (News) – last 24h")
