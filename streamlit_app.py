@@ -119,20 +119,30 @@ def get_live_btc_price_usd() -> float | None:
         return None
 
 # -------------------------
-# Live USDC/USDT peg (Binance)
+# Live USDC "peg" via CoinGecko
 # -------------------------
 
-def get_live_usdc_usdt_binance() -> float | None:
-    """Fetch live USDC/USDT price from Binance."""
+def get_live_usdc_peg_coingecko() -> float | None:
+    """
+    Approximate USDC/USDT by taking USDC/USD and USDT/USD from CoinGecko
+    and computing their ratio.
+    """
     try:
-        url = "https://api.binance.com/api/v3/ticker/price"
-        params = {"symbol": "USDCUSDT"}
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {
+            "ids": "usd-coin,tether",
+            "vs_currencies": "usd",
+        }
         r = requests.get(url, params=params, timeout=5)
         r.raise_for_status()
         data = r.json()
-        return float(data["price"])
+        usdc_usd = float(data["usd-coin"]["usd"])
+        usdt_usd = float(data["tether"]["usd"])
+        if usdt_usd == 0:
+            raise ValueError("USDT/USD is zero")
+        return usdc_usd / usdt_usd
     except Exception as e:
-        st.warning(f"Live USDC peg fetch failed: {e}")
+        st.warning(f"Live USDC peg fetch (CoinGecko) failed: {e}")
         return None
 
 # -------------------------
@@ -303,16 +313,17 @@ with left_col:
         )
         st.plotly_chart(fig_peg, use_container_width=True)
 
-        # Try live peg from Binance, otherwise fall back to simulated data
-        live_peg = get_live_usdc_usdt_binance()
+        # Try live peg from CoinGecko, otherwise fall back to simulated data
+        live_peg = get_live_usdc_peg_coingecko()
         used_live = live_peg is not None
 
         if used_live:
             peg_value = live_peg
-            source_label = "Binance USDC/USDT"
+            source_label = "CoinGecko (USDC/USDT via USD)"
         else:
             peg_value = float(latest["peg"])
             source_label = "Simulated peg (fallback)"
+
 
         peg_dev = abs(peg_value - 1.0)
         peg_status = "Normal" if peg_dev <= 0.002 else "Under Pressure"
