@@ -479,12 +479,40 @@ with left_col:
 
 # RIGHT COLUMN – Composite Risk
 with right_col:
-    st.markdown("#### Composite Risk, Alerts & Exchange Health")
+    st.markdown("#### Composite Risk, Alerts & Exchange Health (v1.0 composite)")
 
-    risk_label, risk_desc = interpret_risk(latest["risk_score"])
-    if latest["risk_score"] >= high_thr:
+    # --- Compute components for composite risk score ---
+    intraday_ret = (latest["btc"] - df["btc"].iloc[0]) / df["btc"].iloc[0] * 100
+    liq_index = float(latest["liquidity_index"])
+    liq_trend = "tightening" if liq_index < df["liquidity_index"].iloc[0] else "easing or stable"
+
+    # Live peg (or fallback)
+    live_peg = get_live_usdc_peg_coingecko()
+    if live_peg is None:
+        live_peg = float(latest["peg"])
+    peg_dev = abs(live_peg - 1.0)
+
+    # Exchange health (we'll reuse this later in the health panel)
+    exchanges_to_check = [
+        ("Binance", "https://api.binance.com/api/v3/time"),
+        ("Coinbase", "https://api.coinbase.com/v2/time"),
+        ("Kraken", "https://api.kraken.com/0/public/Time"),
+    ]
+    health_results = [check_exchange_health(name, url) for name, url in exchanges_to_check]
+
+    # Composite risk score
+    composite_score, risk_details = compute_composite_risk(
+        intraday_ret_pct=intraday_ret,
+        liq_index=liq_index,
+        liq_trend=liq_trend,
+        peg_dev=peg_dev,
+        health_results=health_results,
+    )
+
+    risk_label, risk_desc = interpret_risk(composite_score)
+    if composite_score >= high_thr:
         risk_color = "#e74c3c"  # red
-    elif latest["risk_score"] >= med_thr:
+    elif composite_score >= med_thr:
         risk_color = "#f1c40f"  # yellow
     else:
         risk_color = "#2ecc71"  # green
@@ -495,11 +523,22 @@ with right_col:
         <div style="border-radius:8px;padding:0.8rem 1rem;margin-bottom:0.7rem;
                     background-color:{risk_color}20;border:1px solid {risk_color};">
             <span style="font-weight:700;color:{risk_color};">⚠ {risk_label}</span><br>
-            <span style="font-size:0.9rem;color:#ddd;">{risk_desc}</span>
+            <span style="font-size:0.9rem;color:#ddd;">{risk_desc}</span><br>
+            <span style="font-size:0.8rem;color:#aaa;">Composite risk score: {composite_score:.1f} / 100</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+    if latest["risk_score"] >= high_thr:
+        risk_color = "#e74c3c"  # red
+    elif latest["risk_score"] >= med_thr:
+        risk_color = "#f1c40f"  # yellow
+    else:
+        risk_color = "#2ecc71"  # green
+
+
 
     # Risk history chart
     fig_risk = px.line(df, x="time", y="risk_score", template="plotly_dark")
@@ -514,34 +553,22 @@ with right_col:
     st.plotly_chart(fig_risk, use_container_width=True)
 
     # Breakdown bullets
-    st.markdown("**Signals feeding into risk (in this prototype):**")
+    st.markdown("**Signals feeding into this risk score:**")
     st.markdown(
         f"""
-        - Liquidity: **{'tightening' if latest['liquidity_index'] < 55 else 'neutral/easing'}**
-        - BTC: **event shock detected** around {event_time:%H:%M} UTC
-        - Stablecoin peg: **{peg_status}**
-        - Recent risk trend: {'rising' if latest['risk_score'] > df['risk_score'].iloc[0] else 'falling or flat'}
+        - Price: **{risk_details['price_comment']}**
+        - Liquidity: **{risk_details['liq_comment']}**
+        - Stablecoin peg: **{risk_details['peg_comment']}**
+        - Exchange health: **{risk_details['exch_comment']}**
         """
     )
 
-    st.caption(
-        "In a real implementation, this panel would combine many more inputs: "
-        "on-chain flows, exchange fragility, macro surprise indices, and narrative velocity."
-    )
 
 
 
     # Exchange health section
     st.markdown("---")
     st.markdown("**Exchange API health (latency, lower is better):**")
-
-    exchanges_to_check = [
-        ("Binance", "https://api.binance.com/api/v3/time"),
-        ("Coinbase", "https://api.coinbase.com/v2/time"),
-        ("Kraken", "https://api.kraken.com/0/public/Time"),
-    ]
-
-    health_results = [check_exchange_health(name, url) for name, url in exchanges_to_check]
 
     lines = []
     for h in health_results:
@@ -586,4 +613,64 @@ else:
         "This is a simple 'narrative heat' view. Spikes in one or more themes, "
         "combined with liquidity and exchange stress, often precede large moves."
     )
+
+# -------------------------
+# Composite risk score (0–100)
+# -------------------------
+
+def compute_composite_risk(
+    intraday_ret_pct: float,
+    liq_index: float,
+    liq_trend: str,
+    peg_dev: float,
+    health_results: list[dict],
+) -> tuple[float, dict]:
+    """
+    Very simple first-pass composite risk score.
+
+    Returns (score_0_100, details_dict).
+    """
+    score = 0.0
+
+    # 1) Price move in window: big moves → higher risk
+    score += min(abs(intraday_ret_pct) * 2.0, 35.0)
+
+    # 2) Liquidity index level & trend
+    if liq_index < 50:
+        score += 15.0
+    elif liq_index < 55:
+        score += 8.0
+
+    if liq_trend == "tightening":
+        score += 7.0
+
+    # 3) Stablecoin peg deviation
+    if peg_dev > 0.010:      # > 1%
+        score += 30.0
+    elif peg_dev > 0.005:    # 0.5–1%
+        score += 15.0
+    elif peg_dev > 0.002:    # 0.2–0.5%
+        score += 5.0
+
+    # 4) Exchange health
+    bad_exchanges = [h for h in health_results if not h["ok"]]
+    high_latency = [
+        h for h in health_results
+        if h["ok"] and h["latency_ms"] is not None and h["latency_ms"] > 800
+    ]
+
+    if bad_exchanges:
+        score += 10.0
+    if high_latency:
+        score += 5.0
+
+    score = max(0.0, min(100.0, score))
+
+    details = {
+        "price_comment": f"Intraday move: {intraday_ret_pct:+.2f}%",
+        "liq_comment": f"Liquidity index: {liq_index:.1f} ({liq_trend})",
+        "peg_comment": f"Peg deviation: {peg_dev:.4f}",
+        "exch_comment": f"Unhealthy exchanges: {len(bad_exchanges)}, high-latency: {len(high_latency)}",
+    }
+    return score, details
 
