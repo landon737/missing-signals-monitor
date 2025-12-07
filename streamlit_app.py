@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import requests
 
 # -------------------------
 # Config & page layout
@@ -99,6 +100,23 @@ def generate_mock_streams(hours: int = 12, step_minutes: int = 10) -> pd.DataFra
     df.loc[event_idx, "event_flag"] = 1
     return df
 
+# -------------------------
+# Live BTC price (CoinGecko)
+# -------------------------
+
+def get_live_btc_price_usd() -> float | None:
+    """Fetch live BTC price in USD from CoinGecko."""
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {"ids": "bitcoin", "vs_currencies": "usd"}
+        r = requests.get(url, params=params, timeout=5)
+        r.raise_for_status()
+        data = r.json()
+        return float(data["bitcoin"]["usd"])
+    except Exception as e:
+        # In production you might log this instead
+        st.warning(f"Live price fetch failed: {e}")
+        return None
 
 # -------------------------
 # Risk interpretation
@@ -191,7 +209,12 @@ with btc_col:
     # Quick stats row
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.metric("Last Price", f"{latest['btc']:,.0f} USD")
+        live_price = get_live_btc_price_usd()
+        if live_price is not None:
+            st.metric("Live BTC (CoinGecko)", f"{live_price:,.0f} USD")
+        else:
+            st.metric("Simulated BTC (fallback)", f"{latest['btc']:,.0f} USD")
+
     with c2:
         pct_from_event = (latest["btc"] - df.loc[df["event_flag"] == 1, "btc"].iloc[0]) / df.loc[df["event_flag"] == 1, "btc"].iloc[0] * 100
         st.metric("Move since event", f"{pct_from_event:+.2f}%")
