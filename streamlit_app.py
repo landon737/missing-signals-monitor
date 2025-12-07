@@ -24,6 +24,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import requests
+import time
 
 # -------------------------
 # Config & page layout
@@ -175,6 +176,33 @@ def get_crypto_liquidity_proxy() -> dict | None:
         st.warning(f"Crypto liquidity proxy fetch failed: {e}")
         return None
 
+# -------------------------
+# Exchange API health / latency
+# -------------------------
+
+def check_exchange_health(name: str, url: str, timeout: float = 3.0) -> dict:
+    """
+    Ping a public API endpoint and measure latency (ms).
+    Returns a dict: {name, latency_ms, ok, error}
+    """
+    start = time.monotonic()
+    try:
+        r = requests.get(url, timeout=timeout)
+        r.raise_for_status()
+        latency_ms = (time.monotonic() - start) * 1000
+        return {
+            "name": name,
+            "latency_ms": latency_ms,
+            "ok": True,
+            "error": None,
+        }
+    except Exception as e:
+        return {
+            "name": name,
+            "latency_ms": None,
+            "ok": False,
+            "error": type(e).__name__,
+        }
 
 # -------------------------
 # Risk interpretation
@@ -383,7 +411,7 @@ with left_col:
 
 # RIGHT COLUMN – Composite Risk
 with right_col:
-    st.markdown("#### Composite Risk & Alerts")
+    st.markdown("#### Composite Risk, Alerts & Exchange Health")
 
     risk_label, risk_desc = interpret_risk(latest["risk_score"])
     if latest["risk_score"] >= high_thr:
@@ -432,3 +460,32 @@ with right_col:
         "In a real implementation, this panel would combine many more inputs: "
         "on-chain flows, exchange fragility, macro surprise indices, and narrative velocity."
     )
+
+
+
+    # Exchange health section
+    st.markdown("---")
+    st.markdown("**Exchange API health (latency, lower is better):**")
+
+    exchanges_to_check = [
+        ("Binance", "https://api.binance.com/api/v3/time"),
+        ("Coinbase", "https://api.coinbase.com/v2/time"),
+        ("Kraken", "https://api.kraken.com/0/public/Time"),
+    ]
+
+    health_results = [check_exchange_health(name, url) for name, url in exchanges_to_check]
+
+    lines = []
+    for h in health_results:
+        if h["ok"] and h["latency_ms"] is not None:
+            lines.append(f"- {h['name']}: **{h['latency_ms']:.0f} ms** (OK)")
+        else:
+            lines.append(f"- {h['name']}: **unreachable** ({h['error']})")
+
+    st.markdown("  \n".join(lines))
+
+    st.caption(
+        "If one or more major exchanges become slow or unreachable, this can be an early sign of "
+        "stress, outages, or unusual load before price fully reflects it."
+    )
+
