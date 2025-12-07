@@ -114,8 +114,8 @@ def get_live_btc_price_usd() -> float | None:
         data = r.json()
         return float(data["bitcoin"]["usd"])
     except Exception as e:
-        # In production you might log this instead
-        st.warning(f"Live price fetch failed: {e}")
+        # Show a warning in the app, but don't crash
+        st.warning(f"Live BTC price fetch failed: {e}")
         return None
 
 # -------------------------
@@ -182,6 +182,12 @@ st.markdown(
 )
 
 st.markdown(
+    "<small style='color:#888;'>Build: <b>v1.1 – live BTC metric enabled</b></small>",
+    unsafe_allow_html=True,
+)
+
+
+st.markdown(
     f"<small>Last update (UTC): <b>{latest['time']:%Y-%m-%d %H:%M}</b></small>",
     unsafe_allow_html=True,
 )
@@ -208,6 +214,8 @@ with btc_col:
 
     # Quick stats row
     c1, c2, c3, c4 = st.columns(4)
+
+    # Column 1: live BTC from CoinGecko (with fallback)
     with c1:
         live_price = get_live_btc_price_usd()
         if live_price is not None:
@@ -215,17 +223,20 @@ with btc_col:
         else:
             st.metric("Simulated BTC (fallback)", f"{latest['btc']:,.0f} USD")
 
+    # Column 2: move since event
     with c2:
         pct_from_event = (latest["btc"] - df.loc[df["event_flag"] == 1, "btc"].iloc[0]) / df.loc[df["event_flag"] == 1, "btc"].iloc[0] * 100
         st.metric("Move since event", f"{pct_from_event:+.2f}%")
+
+    # Column 3: move in window
     with c3:
         intraday_ret = (latest["btc"] - df["btc"].iloc[0]) / df["btc"].iloc[0] * 100
         st.metric("Move in window", f"{intraday_ret:+.2f}%")
+
+    # Column 4: event time
     with c4:
         st.metric("Event time", event_time.strftime("%Y-%m-%d %H:%M"))
 
-
-st.markdown("---")
 
 
 # -------------------------
