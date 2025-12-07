@@ -1,0 +1,2 @@
+timestamp,btc_price,composite_score,intraday_ret_pct,liq_index,liq_trend,peg_dev,bad_exchanges,high_latency
+2025-12-07 23:38:55,45159.33,15.37,7.68,63.1,easing or stable,0.00015,0,0
