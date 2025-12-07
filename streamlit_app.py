@@ -20,6 +20,7 @@ Then open the URL it prints (usually http://localhost:8501) in your browser.
 """
 
 import datetime as dt
+import os
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -27,6 +28,134 @@ import plotly.express as px
 import requests
 import time
 from requests.exceptions import HTTPError
+
+# -------------------------
+# GitHub CSV logging helpers
+# -------------------------
+
+import base64
+import json
+import io
+
+def github_get_file(token: str, repo: str, path: str):
+    """
+    Get a file from GitHub via the contents API.
+    Returns (text_content or None, sha or None).
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    r = requests.get(url, headers=headers, timeout=10)
+    if r.status_code == 200:
+        data = r.json()
+        content = base64.b64decode(data["content"]).decode("utf-8")
+        sha = data["sha"]
+        return content, sha
+    elif r.status_code == 404:
+        return None, None
+    else:
+        raise Exception(f"GitHub GET failed: {r.status_code} {r.text}")
+
+
+def github_put_file(token: str, repo: str, path: str, new_content: str, message: str, sha: str | None = None):
+    """
+    Create or update a file on GitHub via the contents API.
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    payload = {
+        "message": message,
+        "content": base64.b64encode(new_content.encode("utf-8")).decode("ascii"),
+    }
+    if sha:
+        payload["sha"] = sha
+    r = requests.put(url, headers=headers, data=json.dumps(payload), timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def log_risk_snapshot_to_github(
+    timestamp: dt.datetime,
+    btc_price: float,
+    composite_score: float,
+    intraday_ret_pct: float,
+    liq_index: float,
+    liq_trend: str,
+    peg_dev: float,
+    bad_exchanges: int,
+    high_latency: int,
+):
+    token = st.secrets.get("github_token")
+    repo = st.secrets.get("github_repo")
+    path = st.secrets.get("github_data_path", "risk_history.csv")
+
+    if not token or not repo:
+        st.info("Risk logging: GitHub token or repo not configured in secrets – logging disabled.")
+        return
+
+    try:
+        existing, sha = github_get_file(token, repo, path)
+
+        header = (
+            "timestamp,btc_price,composite_score,intraday_ret_pct,"
+            "liq_index,liq_trend,peg_dev,bad_exchanges,high_latency\n"
+        )
+        line = (
+            f"{timestamp.isoformat(sep=' ', timespec='seconds')},"
+            f"{btc_price:.2f},"
+            f"{composite_score:.2f},"
+            f"{intraday_ret_pct:.2f},"
+            f"{liq_index:.2f},"
+            f"{liq_trend},"
+            f"{peg_dev:.5f},"
+            f"{bad_exchanges},"
+            f"{high_latency}\n"
+        )
+
+        if existing is None:
+            new_content = header + line
+            commit_message = "Create risk_history.csv and add first snapshot"
+        else:
+            new_content = existing + line
+            commit_message = "Append risk snapshot from Streamlit dashboard"
+
+        github_put_file(
+            token,
+            repo,
+            path,
+            new_content,
+            commit_message,
+            sha=sha,
+        )
+
+        st.info(f"Risk logging: snapshot written to GitHub ({path}) at {timestamp.isoformat(timespec='seconds')}.")
+
+    except Exception as e:
+        st.error(f"Risk logging: failed to write to GitHub – {e}")
+
+
+def load_risk_history_from_github():
+    token = st.secrets.get("github_token")
+    repo = st.secrets.get("github_repo")
+    path = st.secrets.get("github_data_path", "risk_history.csv")
+
+    if not token or not repo:
+        return None
+
+    try:
+        existing, _ = github_get_file(token, repo, path)
+        if existing is None:
+            return None
+        return pd.read_csv(io.StringIO(existing), parse_dates=["timestamp"])
+    except Exception as e:
+        st.info(f"Risk history load failed: {e}")
+        return None
+
 
 # -------------------------
 # Config & page layout
@@ -272,6 +401,179 @@ def get_narrative_pulse() -> dict | None:
     except Exception as e:
         st.warning(f"Narrative pulse fetch failed: {e}")
         return None
+
+
+# -------------------------
+# GitHub CSV logging helpers
+# -------------------------
+
+import base64
+import json
+import io
+
+def github_get_file(token: str, repo: str, path: str):
+    """
+    Get a file from GitHub via the contents API.
+    Returns (text_content or None, sha or None).
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    r = requests.get(url, headers=headers, timeout=10)
+    if r.status_code == 200:
+        data = r.json()
+        content = base64.b64decode(data["content"]).decode("utf-8")
+        sha = data["sha"]
+        return content, sha
+    elif r.status_code == 404:
+        return None, None
+    else:
+        raise Exception(f"GitHub GET failed: {r.status_code} {r.text}")
+
+
+def github_put_file(token: str, repo: str, path: str, new_content: str, message: str, sha: str | None = None):
+    """
+    Create or update a file on GitHub via the contents API.
+    """
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json",
+    }
+    url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    payload = {
+        "message": message,
+        "content": base64.b64encode(new_content.encode("utf-8")).decode("ascii"),
+    }
+    if sha:
+        payload["sha"] = sha
+    r = requests.put(url, headers=headers, data=json.dumps(payload), timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+
+def log_risk_snapshot_to_github(
+    timestamp: dt.datetime,
+    btc_price: float,
+    composite_score: float,
+    intraday_ret_pct: float,
+    liq_index: float,
+    liq_trend: str,
+    peg_dev: float,
+    bad_exchanges: int,
+    high_latency: int,
+):
+    token = st.secrets.get("github_token")
+    repo = st.secrets.get("github_repo")
+    path = st.secrets.get("github_data_path", "risk_history.csv")
+
+    if not token or not repo:
+        st.info("Risk logging: GitHub token or repo not configured in secrets – logging disabled.")
+        return
+
+    try:
+        existing, sha = github_get_file(token, repo, path)
+
+        header = (
+            "timestamp,btc_price,composite_score,intraday_ret_pct,"
+            "liq_index,liq_trend,peg_dev,bad_exchanges,high_latency\n"
+        )
+        line = (
+            f"{timestamp.isoformat(sep=' ', timespec='seconds')},"
+            f"{btc_price:.2f},"
+            f"{composite_score:.2f},"
+            f"{intraday_ret_pct:.2f},"
+            f"{liq_index:.2f},"
+            f"{liq_trend},"
+            f"{peg_dev:.5f},"
+            f"{bad_exchanges},"
+            f"{high_latency}\n"
+        )
+
+        if existing is None:
+            new_content = header + line
+            commit_message = "Create risk_history.csv and add first snapshot"
+        else:
+            new_content = existing + line
+            commit_message = "Append risk snapshot from Streamlit dashboard"
+
+        github_put_file(
+            token,
+            repo,
+            path,
+            new_content,
+            commit_message,
+            sha=sha,
+        )
+
+        st.info(f"Risk logging: snapshot written to GitHub ({path}) at {timestamp.isoformat(timespec='seconds')}.")
+
+    except Exception as e:
+        st.error(f"Risk logging: failed to write to GitHub – {e}")
+
+
+def load_risk_history_from_github():
+    token = st.secrets.get("github_token")
+    repo = st.secrets.get("github_repo")
+    path = st.secrets.get("github_data_path", "risk_history.csv")
+
+    if not token or not repo:
+        return None
+
+    try:
+        existing, _ = github_get_file(token, repo, path)
+        if existing is None:
+            return None
+        return pd.read_csv(io.StringIO(existing), parse_dates=["timestamp"])
+    except Exception as e:
+        st.info(f"Risk history load failed: {e}")
+        return None
+
+# -------------------------
+# Local CSV logging helper
+# -------------------------
+
+def log_risk_snapshot_locally(
+    timestamp: dt.datetime,
+    btc_price: float,
+    composite_score: float,
+    intraday_ret_pct: float,
+    liq_index: float,
+    liq_trend: str,
+    peg_dev: float,
+    bad_exchanges: int,
+    high_latency: int,
+):
+    """
+    Append a risk snapshot to risk_history.csv in the project folder.
+    """
+    try:
+        path = "risk_history.csv"
+        exists = os.path.exists(path)
+
+        row = {
+            "timestamp": timestamp.isoformat(sep=" ", timespec="seconds"),
+            "btc_price": round(btc_price, 2),
+            "composite_score": round(composite_score, 2),
+            "intraday_ret_pct": round(intraday_ret_pct, 2),
+            "liq_index": round(liq_index, 2),
+            "liq_trend": liq_trend,
+            "peg_dev": round(peg_dev, 5),
+            "bad_exchanges": int(bad_exchanges),
+            "high_latency": int(high_latency),
+        }
+
+        df = pd.DataFrame([row])
+
+        if exists:
+            df.to_csv(path, mode="a", header=False, index=False)
+        else:
+            df.to_csv(path, index=False)
+
+        st.info(f"Risk logging: snapshot written locally to {path} at {row['timestamp']}.")
+    except Exception as e:
+        st.error(f"Risk logging: local logging failed – {e}")
 
 # -------------------------
 # Risk interpretation & composite score
@@ -590,7 +892,29 @@ with right_col:
         health_results=health_results,
     )
 
+    # For logging: derive counts of bad/high-latency exchanges
+    bad_exchanges = [h for h in health_results if not h.get("ok")]
+    high_latency_list = [
+        h for h in health_results
+        if h.get("ok") and h.get("latency_ms") is not None and h["latency_ms"] > 800
+    ]
+
+    # Log snapshot locally
+    now_utc = dt.datetime.utcnow()
+    log_risk_snapshot_locally(
+        timestamp=now_utc,
+        btc_price=float(latest["btc"]),
+        composite_score=float(composite_score),
+        intraday_ret_pct=float(intraday_ret),
+        liq_index=float(liq_index),
+        liq_trend=liq_trend,
+        peg_dev=float(peg_dev),
+        bad_exchanges=len(bad_exchanges),
+        high_latency=len(high_latency_list),
+    )
+
     risk_label, risk_desc = interpret_risk(composite_score)
+
 
     # Choose color
     if composite_score >= high_thr:
@@ -613,6 +937,10 @@ with right_col:
         """,
         unsafe_allow_html=True,
     )
+
+    st.markdown("**Risk logging status:**")
+    # The st.info/st.error messages from log_risk_snapshot_locally will appear around here.
+
 
     # Signals feeding into the score
     st.markdown("**Signals feeding into this risk score:**")
