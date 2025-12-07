@@ -504,3 +504,28 @@ with right_col:
         "stress, outages, or unusual load before price fully reflects it."
     )
 
+st.markdown("---")
+st.markdown("#### Narrative Pulse (News) – last 24h")
+
+pulse = get_narrative_pulse()
+
+if pulse is None:
+    st.markdown(
+        "- Narrative data unavailable. Configure `newsapi_key` in Streamlit secrets to enable this panel."
+    )
+else:
+    total = pulse["total"]
+    themes = pulse["themes"]
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Total articles", total)
+    c2.metric("ETF mentions", themes["ETF"])
+    c3.metric("Hack mentions", themes["hack"])
+    c4.metric("Regulation", themes["regulation"])
+    c5.metric("CPI/Fed", themes["CPI/Fed"])
+
+    st.caption(
+        "This is a simple 'narrative heat' view. Spikes in one or more themes, "
+        "combined with liquidity and exchange stress, often precede large moves."
+    )
+
