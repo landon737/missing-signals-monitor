@@ -264,10 +264,11 @@ left_col, right_col = st.columns([2, 2])
 
 # LEFT COLUMN – Liquidity + Peg
 with left_col:
-    st.markdown("#### Global Liquidity & Stablecoin Peg")
+    st.markdown("#### Global Liquidity & Stablecoin Peg (v1.2)")
 
     sub1, sub2 = st.columns(2)
 
+    # Liquidity subpanel
     with sub1:
         st.caption("Liquidity Index (0–100)")
         fig_liq = px.line(df, x="time", y="liquidity_index", template="plotly_dark")
@@ -279,12 +280,14 @@ with left_col:
             margin=dict(l=30, r=10, t=30, b=30),
         )
         st.plotly_chart(fig_liq, use_container_width=True)
+
         liq_trend = "tightening" if latest["liquidity_index"] < df["liquidity_index"].iloc[0] else "easing or stable"
         st.markdown(
-            f"- **Current:** {latest['liquidity_index']:.1f}\n"
+            f"- **Current:** {latest['liquidity_index']:.1f}  \n"
             f"- **Trend:** {liq_trend.capitalize()}"
         )
 
+    # USDC peg subpanel
     with sub2:
         st.caption("USDC Peg vs 1.0000")
 
@@ -300,9 +303,11 @@ with left_col:
         )
         st.plotly_chart(fig_peg, use_container_width=True)
 
-        # Live peg from Binance (with fallback to simulated)
+        # Try live peg from Binance, otherwise fall back to simulated data
         live_peg = get_live_usdc_usdt_binance()
-        if live_peg is not None:
+        used_live = live_peg is not None
+
+        if used_live:
             peg_value = live_peg
             source_label = "Binance USDC/USDT"
         else:
@@ -318,7 +323,6 @@ with left_col:
             f"- **Peg status:** **{peg_status}**  \n"
             f"- **Source:** {source_label}"
         )
-
 
 # RIGHT COLUMN – Composite Risk
 with right_col:
