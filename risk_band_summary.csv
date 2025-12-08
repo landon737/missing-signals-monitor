@@ -1,6 +1,6 @@
-score_band,n_obs,n_big,avg_score,empirical_prob_big_move
-<40 (Low),3,0,18.34,0.0
-40–55 (Low–Med),0,0,,
-55–70 (Med),0,0,,
-70–80 (Med–High),0,0,,
->=80 (High),0,0,,
+score_band,n_obs,n_big_any,n_big_up,n_big_down,avg_score,empirical_prob_big_move,empirical_prob_big_up,empirical_prob_big_down
+<35 (Calm),16,16,0,16,19.63125,1.0,0.0,1.0
+35–55 (Low–Med),21,21,21,0,38.43380952380952,1.0,1.0,0.0
+55–70 (Med),0,0,0,0,,,,
+70–85 (High),0,0,0,0,,,,
+>=85 (Very High),0,0,0,0,,,,
