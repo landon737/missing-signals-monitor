@@ -29,6 +29,7 @@ import requests
 import time
 from requests.exceptions import HTTPError
 
+
 # -------------------------
 # GitHub CSV logging helpers
 # -------------------------
@@ -530,6 +531,7 @@ def load_risk_history_from_github():
         st.info(f"Risk history load failed: {e}")
         return None
 
+
 # -------------------------
 # Local CSV logging helper
 # -------------------------
@@ -574,6 +576,7 @@ def log_risk_snapshot_locally(
         st.info(f"Risk logging: snapshot written locally to {path} at {row['timestamp']}.")
     except Exception as e:
         st.error(f"Risk logging: local logging failed – {e}")
+
 
 # -------------------------
 # Risk interpretation & composite score
@@ -882,7 +885,6 @@ with right_col:
         ("Kraken", "https://api.kraken.com/0/public/Time"),
     ]
     health_results = [check_exchange_health(name, url) for name, url in exchanges_to_check]
-
     # Composite risk score
     composite_score, risk_details = compute_composite_risk(
         intraday_ret_pct=intraday_ret,
@@ -916,6 +918,7 @@ with right_col:
     risk_label, risk_desc = interpret_risk(composite_score)
 
 
+
     # Choose color
     if composite_score >= high_thr:
         risk_color = "#e74c3c"  # red
@@ -939,7 +942,7 @@ with right_col:
     )
 
     st.markdown("**Risk logging status:**")
-    # The st.info/st.error messages from log_risk_snapshot_locally will appear around here.
+    # (The st.info / st.error messages from log_risk_snapshot_locally will appear around here.)
 
 
     # Signals feeding into the score
