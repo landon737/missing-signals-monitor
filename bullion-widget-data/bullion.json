@@ -1,18 +1,18 @@
 {
-  "updated": "2026-09-09T12:50:00+12:00",
+  "updated": "2026-09-09T13:05:00+12:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
     "broker": "MyGold",
-    "product": "1 kg Perth Mint Silver",
-    "price": 3864,
+    "product": "5g Perth Mint Gold Bar",
+    "price": 1267,
     "signal": "BUY"
   },
   "budget": {
-    "broker": "",
-    "product": "Best purchase ≤ $1,000",
-    "price": 0,
-    "signal": "NEXT AUDIT"
+    "broker": "MyGold",
+    "product": "1/10oz Perth Mint Gold Kangaroo",
+    "price": 865,
+    "signal": "BUY"
   },
   "reserveSignal": "WAIT"
 }
