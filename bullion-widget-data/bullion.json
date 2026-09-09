@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-09T13:23:25+12:00",
+  "updated": "2026-09-09T13:59:00+12:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
@@ -11,7 +11,7 @@
   "budget": {
     "broker": "MyGold",
     "product": "1/10oz Perth Mint Gold Kangaroo",
-    "price": 863,
+    "price": 865,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
