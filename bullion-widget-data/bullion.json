@@ -3,9 +3,9 @@
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
-    "broker": "Christchurch Gold",
-    "product": "5g Gold Value Selection",
-    "price": 1240,
+    "broker": "MyGold",
+    "product": "5g Perth Mint Gold Bar",
+    "price": 1279,
     "signal": "BUY"
   },
   "budget": {
