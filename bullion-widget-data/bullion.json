@@ -1,11 +1,11 @@
 {
-  "updated": "2026-09-15T22:13:00+12:00",
+  "updated": "2026-09-15T22:34:00+12:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
-    "broker": "MyGold",
-    "product": "5g Perth Mint Gold Bar",
-    "price": 1279,
+    "broker": "BullionStar NZ",
+    "product": "5g Gold Bar - Various Brands Pre-Owned",
+    "price": 1264,
     "signal": "BUY"
   },
   "budget": {
