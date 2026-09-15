@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-15T22:34:00+12:00",
+  "updated": "2026-09-16T07:43:00+12:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
@@ -10,8 +10,8 @@
   },
   "budget": {
     "broker": "Christchurch Gold",
-    "product": "1/10oz Gold Kangaroo 2025",
-    "price": 841,
+    "product": "1/10oz Gold Britannia 2026",
+    "price": 824,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
