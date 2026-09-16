@@ -1,17 +1,17 @@
 {
-  "updated": "2026-09-16T07:43:00+12:00",
+  "updated": "2026-09-16T14:51:00+12:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
-    "broker": "BullionStar NZ",
-    "product": "5g Gold Bar - Various Brands Pre-Owned",
-    "price": 1264,
+    "broker": "Christchurch Gold",
+    "product": "1/10oz Gold Kangaroo 2025",
+    "price": 850,
     "signal": "BUY"
   },
   "budget": {
     "broker": "Christchurch Gold",
-    "product": "1/10oz Gold Britannia 2026",
-    "price": 824,
+    "product": "1/10oz Gold Kangaroo 2025",
+    "price": 850,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
