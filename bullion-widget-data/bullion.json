@@ -1,17 +1,17 @@
 {
-  "updated": "2026-09-28T18:43:00+13:00",
+  "updated": "2026-09-29T08:49:00+13:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
     "broker": "Christchurch Gold",
-    "product": "5 gram Gold Investment Selection",
-    "price": 1235.48,
+    "product": "10 Oz Silver Cast Bar",
+    "price": 1194.12,
     "signal": "BUY"
   },
   "budget": {
     "broker": "Christchurch Gold",
-    "product": "10 oz Silver Cast Bar - Investment Selection",
-    "price": 1154.78,
+    "product": "1 Oz Silver - Investment Selection (5 min)",
+    "price": 598.15,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
