@@ -1,17 +1,17 @@
 {
-  "updated": "2026-09-25T14:19:00+12:00",
+  "updated": "2026-09-28T18:43:00+13:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
     "broker": "Christchurch Gold",
     "product": "5g Perth Mint Gold Bar",
-    "price": 1298.59,
+    "price": 1304.11,
     "signal": "BUY"
   },
   "budget": {
     "broker": "Christchurch Gold",
     "product": "1/10oz Gold Britannia 2026",
-    "price": 834.14,
+    "price": 837.75,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
