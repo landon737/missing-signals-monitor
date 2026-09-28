@@ -5,13 +5,13 @@
   "primary": {
     "broker": "Christchurch Gold",
     "product": "10 oz Silver Cast Bar - Investment Selection",
-    "price": 1154.78,
+    "price": 1156.69,
     "signal": "BUY"
   },
   "budget": {
-    "broker": "Christchurch Gold",
-    "product": "5 oz Silver Cast Bar - Investment Selection",
-    "price": 577.93,
+    "broker": "BuyBullion.nz",
+    "product": "5 oz Germania Mint Silver Cast Bar",
+    "price": 613.35,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
