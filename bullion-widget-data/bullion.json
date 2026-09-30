@@ -1,17 +1,17 @@
 {
-  "updated": "2026-09-29T08:49:00+13:00",
+  "updated": "2026-09-30T18:05:00+13:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
     "broker": "Christchurch Gold",
-    "product": "10 Oz Silver Cast Bar",
-    "price": 1194.12,
+    "product": "5 x 1oz Silver Maple Leaf 2026",
+    "price": 616,
     "signal": "BUY"
   },
   "budget": {
     "broker": "Christchurch Gold",
-    "product": "1 Oz Silver - Investment Selection (5 min)",
-    "price": 598.15,
+    "product": "5 x 1oz Silver Maple Leaf 2026",
+    "price": 616,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
