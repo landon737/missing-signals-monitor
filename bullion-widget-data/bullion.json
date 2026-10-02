@@ -1,17 +1,17 @@
 {
-  "updated": "2026-10-01T22:56:00+13:00",
+  "updated": "2026-10-02T14:55:00+13:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
-    "broker": "Christchurch Gold",
-    "product": "5 x 1oz Silver Maple Leaf 2026",
-    "price": 616,
+    "broker": "New Zealand Mint",
+    "product": "5g Gold Minted Bar - Perth Mint",
+    "price": 1271,
     "signal": "BUY"
   },
   "budget": {
-    "broker": "Christchurch Gold",
-    "product": "5 x 1oz Silver Maple Leaf 2026",
-    "price": 616,
+    "broker": "New Zealand Mint",
+    "product": "1oz Silver Fern",
+    "price": 121,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
