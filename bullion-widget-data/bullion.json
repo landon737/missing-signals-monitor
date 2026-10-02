@@ -1,17 +1,17 @@
 {
-  "updated": "2026-10-02T14:55:00+13:00",
+  "updated": "2026-10-02T21:15:00+13:00",
   "scope": "NZ",
   "currency": "NZD",
   "primary": {
-    "broker": "New Zealand Mint",
-    "product": "5g Gold Minted Bar - Perth Mint",
-    "price": 1271,
+    "broker": "Christchurch Gold",
+    "product": "10 Oz Silver Cast Bar - Investment Selection",
+    "price": 1163.34,
     "signal": "BUY"
   },
   "budget": {
-    "broker": "New Zealand Mint",
-    "product": "1oz Silver Fern",
-    "price": 121,
+    "broker": "Christchurch Gold",
+    "product": "1/10 Oz Gold Great Britain Britannia 2026",
+    "price": 824.95,
     "signal": "BUY"
   },
   "reserveSignal": "WAIT"
